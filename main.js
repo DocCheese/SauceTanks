@@ -7,54 +7,90 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x0a0b10, 30, 220);
+scene.fog = new THREE.Fog(0x0a0b10, 40, 280);
 
 const camera = new THREE.PerspectiveCamera(
   70,
   window.innerWidth / window.innerHeight,
   0.1,
-  500
+  650
 );
 
 const clock = new THREE.Clock();
 
-function createLightingSystem(targetScene) {
-  const skyUniforms = {
-    uTopColor: { value: new THREE.Color("#0b1e3d") },
-    uBottomColor: { value: new THREE.Color("#0f1118") },
-    uOffset: { value: 24 },
-    uExponent: { value: 0.45 }
+function makeSvgTexture(svgMarkup) {
+  const blob = new Blob([svgMarkup], { type: "image/svg+xml" });
+  const url = URL.createObjectURL(blob);
+  const image = new Image();
+  const texture = new THREE.CanvasTexture(document.createElement("canvas"));
+
+  image.onload = () => {
+    const canvas = texture.image;
+    const ctx = canvas.getContext("2d");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    ctx.drawImage(image, 0, 0);
+    texture.needsUpdate = true;
+    URL.revokeObjectURL(url);
   };
 
-  const skyMaterial = new THREE.ShaderMaterial({
-    uniforms: skyUniforms,
-    vertexShader: `
-      varying vec3 vWorldPosition;
-      void main() {
-        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-        vWorldPosition = worldPosition.xyz;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: `
-      uniform vec3 uTopColor;
-      uniform vec3 uBottomColor;
-      uniform float uOffset;
-      uniform float uExponent;
-      varying vec3 vWorldPosition;
-      void main() {
-        float h = normalize(vWorldPosition + vec3(0.0, uOffset, 0.0)).y;
-        float mixFactor = pow(max(h, 0.0), uExponent);
-        vec3 color = mix(uBottomColor, uTopColor, mixFactor);
-        gl_FragColor = vec4(color, 1.0);
-      }
-    `,
+  image.src = url;
+  texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  return texture;
+}
+
+const svgSkybox = `
+<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512'>
+  <defs>
+    <linearGradient id='sky' x1='0' y1='0' x2='0' y2='1'>
+      <stop offset='0%' stop-color='#071225'/>
+      <stop offset='55%' stop-color='#1b3f6f'/>
+      <stop offset='100%' stop-color='#6f9ed4'/>
+    </linearGradient>
+    <radialGradient id='glow' cx='70%' cy='25%' r='25%'>
+      <stop offset='0%' stop-color='#fef3b4' stop-opacity='0.9'/>
+      <stop offset='100%' stop-color='#fef3b4' stop-opacity='0'/>
+    </radialGradient>
+  </defs>
+  <rect width='512' height='512' fill='url(#sky)'/>
+  <circle cx='360' cy='120' r='80' fill='url(#glow)'/>
+  <g fill='#ffffff' opacity='0.6'>
+    <circle cx='40' cy='60' r='2'/>
+    <circle cx='90' cy='90' r='1.5'/>
+    <circle cx='130' cy='50' r='1'/>
+    <circle cx='200' cy='80' r='2'/>
+    <circle cx='260' cy='120' r='1.5'/>
+    <circle cx='310' cy='60' r='1.5'/>
+    <circle cx='410' cy='80' r='1'/>
+    <circle cx='450' cy='130' r='2'/>
+  </g>
+  <g fill='#d5e6ff' opacity='0.5'>
+    <circle cx='70' cy='200' r='1'/>
+    <circle cx='160' cy='220' r='1.2'/>
+    <circle cx='240' cy='200' r='1'/>
+    <circle cx='330' cy='210' r='1.3'/>
+    <circle cx='420' cy='230' r='1'/>
+  </g>
+  <path d='M40 330 C140 300 240 360 340 330 C400 315 460 310 520 320 L520 512 L0 512 Z' fill='#8eb2e8' opacity='0.35'/>
+</svg>
+`;
+
+const skyTexture = makeSvgTexture(svgSkybox);
+const skyDome = new THREE.Mesh(
+  new THREE.SphereGeometry(520, 32, 16),
+  new THREE.MeshBasicMaterial({
+    map: skyTexture,
     side: THREE.BackSide,
     depthWrite: false
-  });
+  })
+);
+scene.add(skyDome);
 
-  const skyDome = new THREE.Mesh(new THREE.SphereGeometry(350, 32, 15), skyMaterial);
-  targetScene.add(skyDome);
+function createLightingSystem(targetScene) {
+  const skyColor = new THREE.Color("#0d1b2e");
+  const daySkyColor = new THREE.Color("#e3f0ff");
 
   const ambientLight = new THREE.AmbientLight(0xb1c6da, 0.35);
   const hemiLight = new THREE.HemisphereLight(0x93b6ff, 0x0c1017, 0.35);
@@ -71,17 +107,6 @@ function createLightingSystem(targetScene) {
 
   targetScene.add(ambientLight, hemiLight, sunLight);
 
-  const skyColors = {
-    dawnTop: new THREE.Color("#1c2c50"),
-    dayTop: new THREE.Color("#4b7cc9"),
-    duskTop: new THREE.Color("#2a2f5c"),
-    nightTop: new THREE.Color("#0b1e3d"),
-    dawnBottom: new THREE.Color("#101722"),
-    dayBottom: new THREE.Color("#cad9ff"),
-    duskBottom: new THREE.Color("#0c0f1d"),
-    nightBottom: new THREE.Color("#0b0d14")
-  };
-
   function update(time) {
     const cycle = (Math.sin(time * 0.08) + 1) / 2;
     const sunAngle = THREE.MathUtils.lerp(-Math.PI * 0.15, Math.PI * 0.65, cycle);
@@ -91,21 +116,11 @@ function createLightingSystem(targetScene) {
       -30
     );
 
-    const colorBlend = cycle < 0.5 ? cycle * 2 : (1 - cycle) * 2;
-    const topColor = cycle > 0.35
-      ? skyColors.dayTop.clone().lerp(skyColors.duskTop, 1 - colorBlend)
-      : skyColors.nightTop.clone().lerp(skyColors.dawnTop, colorBlend);
-    const bottomColor = cycle > 0.35
-      ? skyColors.dayBottom.clone().lerp(skyColors.duskBottom, 1 - colorBlend)
-      : skyColors.nightBottom.clone().lerp(skyColors.dawnBottom, colorBlend);
-
-    skyUniforms.uTopColor.value.copy(topColor);
-    skyUniforms.uBottomColor.value.copy(bottomColor);
-
     const sunIntensity = THREE.MathUtils.lerp(0.6, 1.25, cycle);
     sunLight.intensity = sunIntensity;
     ambientLight.intensity = THREE.MathUtils.lerp(0.25, 0.45, cycle);
     hemiLight.intensity = THREE.MathUtils.lerp(0.2, 0.5, cycle);
+    skyDome.material.color.lerpColors(skyColor, daySkyColor, Math.min(cycle * 1.2, 1));
   }
 
   return { update };
@@ -121,7 +136,7 @@ const terrainUniforms = {
   uRim: { value: new THREE.Color("#84b5ff") }
 };
 
-const terrainGeometry = new THREE.PlaneGeometry(400, 400, 200, 200);
+const terrainGeometry = new THREE.PlaneGeometry(520, 520, 220, 220);
 const terrainMaterial = new THREE.ShaderMaterial({
   uniforms: terrainUniforms,
   vertexShader: `
@@ -203,32 +218,52 @@ const svgTread = `
 </svg>
 `;
 
-function makeSvgTexture(svgMarkup) {
-  const blob = new Blob([svgMarkup], { type: "image/svg+xml" });
-  const url = URL.createObjectURL(blob);
-  const image = new Image();
-  const texture = new THREE.CanvasTexture(document.createElement("canvas"));
+const svgBeacon = `
+<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256'>
+  <rect width='256' height='256' rx='24' fill='#242a33'/>
+  <rect x='32' y='32' width='192' height='64' rx='20' fill='#3a4552'/>
+  <rect x='32' y='120' width='192' height='96' rx='20' fill='#0f1724'/>
+  <circle cx='64' cy='168' r='16' fill='#f7cf5b'/>
+  <circle cx='128' cy='168' r='16' fill='#5bd0ff'/>
+  <circle cx='192' cy='168' r='16' fill='#ff7a7a'/>
+</svg>
+`;
 
-  image.onload = () => {
-    const canvas = texture.image;
-    const ctx = canvas.getContext("2d");
-    canvas.width = image.width;
-    canvas.height = image.height;
-    ctx.drawImage(image, 0, 0);
-    texture.needsUpdate = true;
-    URL.revokeObjectURL(url);
-  };
+const svgFuel = `
+<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256'>
+  <rect width='256' height='256' rx='28' fill='#1f252d'/>
+  <rect x='48' y='40' width='160' height='176' rx='28' fill='#2e3a46'/>
+  <rect x='80' y='72' width='96' height='112' rx='20' fill='#0e1117'/>
+  <path d='M96 104 L160 104 L176 136 L160 168 L96 168 L80 136 Z' fill='#7dd39b'/>
+  <circle cx='128' cy='136' r='20' fill='#bff7d2'/>
+</svg>
+`;
 
-  image.src = url;
-  texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  return texture;
-}
+const svgOutpost = `
+<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256'>
+  <rect width='256' height='256' rx='18' fill='#21252c'/>
+  <rect x='24' y='32' width='208' height='192' rx='20' fill='#38424f'/>
+  <rect x='40' y='56' width='176' height='64' rx='18' fill='#4d6b92'/>
+  <rect x='40' y='136' width='72' height='72' rx='12' fill='#c7d7e6'/>
+  <rect x='144' y='136' width='72' height='72' rx='12' fill='#93a7bd'/>
+</svg>
+`;
+
+const svgRock = `
+<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256'>
+  <rect width='256' height='256' fill='#1a1d22'/>
+  <path d='M24 176 L64 72 L160 48 L232 120 L200 216 L88 224 Z' fill='#3b3f45'/>
+  <path d='M88 208 L128 112 L200 128 L176 200 Z' fill='#565b63'/>
+</svg>
+`;
 
 const hullTexture = makeSvgTexture(svgHull);
 const turretTexture = makeSvgTexture(svgTurret);
 const treadTexture = makeSvgTexture(svgTread);
+const beaconTexture = makeSvgTexture(svgBeacon);
+const fuelTexture = makeSvgTexture(svgFuel);
+const outpostTexture = makeSvgTexture(svgOutpost);
+const rockTexture = makeSvgTexture(svgRock);
 
 const hullMaterial = new THREE.MeshStandardMaterial({
   map: hullTexture,
@@ -281,6 +316,103 @@ const rightTread = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 10.5), treadMa
 rightTread.position.set(3.4, 1.1, 0);
 rightTread.castShadow = true;
 tankGroup.add(rightTread);
+
+const tankScale = 0.75;
+tankGroup.scale.setScalar(tankScale);
+
+const beaconMaterial = new THREE.MeshStandardMaterial({
+  map: beaconTexture,
+  roughness: 0.45,
+  metalness: 0.4
+});
+
+const fuelMaterial = new THREE.MeshStandardMaterial({
+  map: fuelTexture,
+  roughness: 0.6,
+  metalness: 0.2
+});
+
+const outpostMaterial = new THREE.MeshStandardMaterial({
+  map: outpostTexture,
+  roughness: 0.5,
+  metalness: 0.25
+});
+
+const rockMaterial = new THREE.MeshStandardMaterial({
+  map: rockTexture,
+  roughness: 0.9,
+  metalness: 0.05
+});
+
+const worldProps = [];
+
+function addWorldProp(mesh, position, groundOffset) {
+  mesh.position.copy(position);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.userData.groundOffset = groundOffset;
+  scene.add(mesh);
+  worldProps.push(mesh);
+}
+
+function createBeacon(position) {
+  const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.2, 8, 12), beaconMaterial);
+  const dish = new THREE.Mesh(new THREE.ConeGeometry(1.5, 2, 12), beaconMaterial);
+  dish.position.y = 5.2;
+  dish.rotation.x = Math.PI * 0.5;
+  tower.add(dish);
+  addWorldProp(tower, position, 4);
+}
+
+function createFuelDepot(position) {
+  const base = new THREE.Mesh(new THREE.BoxGeometry(6, 1.6, 6), fuelMaterial);
+  const tank = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 4.4, 14), fuelMaterial);
+  tank.position.y = 2.6;
+  base.add(tank);
+  addWorldProp(base, position, 0.8);
+}
+
+function createOutpost(position) {
+  const base = new THREE.Mesh(new THREE.BoxGeometry(8, 2.6, 8), outpostMaterial);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(6, 2.4, 6), outpostMaterial);
+  top.position.y = 2.4;
+  base.add(top);
+  addWorldProp(base, position, 1.3);
+}
+
+function createRockCluster(position) {
+  const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(3, 0), rockMaterial);
+  rock.scale.set(1.2, 0.8, 1.4);
+  addWorldProp(rock, position, 2.2);
+}
+
+[
+  new THREE.Vector3(-60, 0, -40),
+  new THREE.Vector3(50, 0, 70),
+  new THREE.Vector3(-90, 0, 90),
+  new THREE.Vector3(100, 0, -60)
+].forEach((pos) => createOutpost(pos));
+
+[
+  new THREE.Vector3(-120, 0, 30),
+  new THREE.Vector3(120, 0, 20),
+  new THREE.Vector3(0, 0, -120)
+].forEach((pos) => createFuelDepot(pos));
+
+[
+  new THREE.Vector3(-30, 0, 120),
+  new THREE.Vector3(70, 0, -110),
+  new THREE.Vector3(140, 0, 80),
+  new THREE.Vector3(-140, 0, -80)
+].forEach((pos) => createBeacon(pos));
+
+[
+  new THREE.Vector3(-20, 0, -90),
+  new THREE.Vector3(90, 0, 30),
+  new THREE.Vector3(-110, 0, 10),
+  new THREE.Vector3(20, 0, 90),
+  new THREE.Vector3(130, 0, -20)
+].forEach((pos) => createRockCluster(pos));
 
 const smokeTrail = [];
 const maxSmoke = 40;
@@ -435,6 +567,13 @@ function updateMiniMap() {
     tankY + Math.cos(-tankGroup.rotation.y) * 12
   );
   mapCtx.stroke();
+
+  worldProps.forEach((prop) => {
+    const propX = centerX + prop.position.x * mapScale;
+    const propY = centerY + prop.position.z * mapScale;
+    mapCtx.fillStyle = "#7fb4ff";
+    mapCtx.fillRect(propX - 2, propY - 2, 4, 4);
+  });
 }
 
 function updateCamera() {
@@ -490,7 +629,7 @@ function animate() {
   tankGroup.position.add(moveVector);
 
   const height = getHeightAt(tankGroup.position.x, tankGroup.position.z, elapsed);
-  tankGroup.position.y = height + 1.2;
+  tankGroup.position.y = height + 1.2 * tankScale;
 
   turretGroup.rotation.y = tankState.turretYaw;
   cannonPivot.rotation.x = tankState.cannonPitch;
@@ -506,6 +645,10 @@ function animate() {
       scene.remove(shot);
       projectiles.splice(index, 1);
     }
+  });
+
+  worldProps.forEach((prop) => {
+    prop.position.y = getHeightAt(prop.position.x, prop.position.z, elapsed) + prop.userData.groundOffset;
   });
 
   if (Math.abs(tankState.velocity) > 2) {
