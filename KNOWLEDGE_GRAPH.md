@@ -11,9 +11,12 @@ graph TD
   CameraModes --> Gunner["Gunner View"]
   CameraModes --> Commander["Commander View"]
 
-  Terrain["Shader Terrain"] --> HeightFunc["getHeightAt()"]
+  Terrain["Voxel Terrain"] --> HeightFunc["getSurfaceHeight()"]
+  Terrain --> VoxelGrid["Voxel Grid + Instanced Mesh"]
+  Terrain --> Destruction["Projectile Impact Destruction"]
+  VoxelGrid --> Props["Nature Props"]
   HeightFunc --> Collision["Grounding + Collision"]
-  Terrain --> BiomeColors["Height Color Bands"]
+  Destruction --> Props
 
   Lighting["Lighting System"] --> Sun["Directional Sun"]
   Lighting --> Ambient["Ambient + Hemisphere Light"]
@@ -34,7 +37,7 @@ graph TD
 
 ## Node Notes
 - **Tank Entity** bundles meshes, camera tracking, and movement physics.
-- **Shader Terrain** provides both visuals and the authoritative height data for collision.
+- **Voxel Terrain** provides both visuals and the authoritative height data for collision, with destructible updates.
 - **SVG Textures** are generated from inline SVG strings to keep styling editable.
 - **HUD + Mini-map** communicate role changes and positional awareness.
 - **Lighting System** bundles the skybox shader and sun/ambient lights to control scene mood.
