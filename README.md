@@ -8,6 +8,7 @@ A first-person tank driving prototype built with Three.js. The focus is on a mul
 - **SVG textures rendered in 3D** for hull, turret, and treads.
 - **Shader terrain** with procedural displacement and height-based material blending.
 - **Collision-ready terrain sampling** that keeps the tank grounded.
+- **Skybox + lighting system** with a subtle sun cycle for time-of-day mood shifts.
 - **Mini-map** toggle for a quick top-down situational view.
 
 ## Run locally
