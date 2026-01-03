@@ -1,13 +1,15 @@
 # SauceTanks - ThreeJS Tank Game Concept
 
-A first-person tank driving prototype built with Three.js. The focus is on a multi-role tank experience (driver + gunner + commander), SVG-based textures, and shader-driven terrain with a height-based collision model.
+A first-person tank driving prototype built with Three.js. The focus is on a multi-role tank experience (driver + gunner + commander), SVG-based textures, and voxel terrain with destructible cover.
 
 ## Features
 - **First-person driving loop** with adjustable camera modes (driver, gunner, commander).
 - **Turret + cannon control** via mouse look and firing projectiles.
 - **SVG textures rendered in 3D** for hull, turret, and treads.
-- **Shader terrain** with procedural displacement and height-based material blending.
-- **Collision-ready terrain sampling** that keeps the tank grounded.
+- **Voxel terrain** with procedural height seeding and instanced mesh rendering.
+- **Destructible terrain** that reacts to shell impacts and rebuilds surface props.
+- **Nature props** (grass, trees, rocks) scattered across the terrain.
+- **Collision-ready voxel sampling** that keeps the tank grounded.
 - **Mini-map** toggle for a quick top-down situational view.
 
 ## Run locally
@@ -23,7 +25,7 @@ Open `http://localhost:8000`.
 - **WASD**: Drive
 - **Shift**: Boost
 - **Mouse**: Turret + cannon aim (click to lock pointer)
-- **Left Click**: Fire
+- **Left Click**: Fire (destroys nearby voxels on impact)
 - **V**: Cycle camera modes
 - **M**: Toggle mini-map
 
