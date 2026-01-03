@@ -19,10 +19,19 @@ graph TD
   Lighting --> Ambient["Ambient + Hemisphere Light"]
   Lighting --> Skybox["Skybox Dome"]
   Skybox --> Fog["Scene Fog"]
+  Lighting --> ColorMgmt["Color Management"]
 
   SVGTextures["SVG Textures"] --> HullTex["Hull Texture"]
   SVGTextures --> TurretTex["Turret Texture"]
   SVGTextures --> TreadTex["Tread Texture"]
+  SVGTextures --> SkyTex["Skybox Texture"]
+  SVGTextures --> PropTex["World Prop Textures"]
+
+  Props["World Props"] --> Outposts["Outposts"]
+  Props --> FuelDepots["Fuel Depots"]
+  Props --> Beacons["Signal Beacons"]
+  Props --> Rocks["Rock Clusters"]
+  Props --> TerrainSnap["Terrain Height Snapping"]
 
   Input["Input System"] --> Drive["Drive Controls"]
   Input --> Aim["Turret + Cannon Aiming"]
@@ -36,5 +45,6 @@ graph TD
 - **Tank Entity** bundles meshes, camera tracking, and movement physics.
 - **Shader Terrain** provides both visuals and the authoritative height data for collision.
 - **SVG Textures** are generated from inline SVG strings to keep styling editable.
+- **World Props** add SVG-textured structures that are grounded via terrain sampling.
 - **HUD + Mini-map** communicate role changes and positional awareness.
-- **Lighting System** bundles the skybox shader and sun/ambient lights to control scene mood.
+- **Lighting System** bundles the skybox dome and sun/ambient lights to control scene mood.
