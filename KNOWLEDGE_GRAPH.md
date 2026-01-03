@@ -15,6 +15,11 @@ graph TD
   HeightFunc --> Collision["Grounding + Collision"]
   Terrain --> BiomeColors["Height Color Bands"]
 
+  Lighting["Lighting System"] --> Sun["Directional Sun"]
+  Lighting --> Ambient["Ambient + Hemisphere Light"]
+  Lighting --> Skybox["Skybox Dome"]
+  Skybox --> Fog["Scene Fog"]
+
   SVGTextures["SVG Textures"] --> HullTex["Hull Texture"]
   SVGTextures --> TurretTex["Turret Texture"]
   SVGTextures --> TreadTex["Tread Texture"]
@@ -32,3 +37,4 @@ graph TD
 - **Shader Terrain** provides both visuals and the authoritative height data for collision.
 - **SVG Textures** are generated from inline SVG strings to keep styling editable.
 - **HUD + Mini-map** communicate role changes and positional awareness.
+- **Lighting System** bundles the skybox shader and sun/ambient lights to control scene mood.

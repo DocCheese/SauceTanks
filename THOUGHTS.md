@@ -4,3 +4,4 @@
 - SVG textures give a stylized blueprint feel and make it easy to iterate the tank's look without external asset pipelines.
 - The shader-driven terrain should evolve into a biomes system, with distinct audio and particle feedback.
 - Keeping the collision logic tied to shader math avoids mismatches between visuals and gameplay.
+- The skybox and lighting cycle helps communicate time-of-day shifts without needing heavy environment assets.
