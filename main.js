@@ -18,14 +18,100 @@ const camera = new THREE.PerspectiveCamera(
 
 const clock = new THREE.Clock();
 
-const ambientLight = new THREE.AmbientLight(0x8899aa, 0.5);
-scene.add(ambientLight);
+function createLightingSystem(targetScene) {
+  const skyUniforms = {
+    uTopColor: { value: new THREE.Color("#0b1e3d") },
+    uBottomColor: { value: new THREE.Color("#0f1118") },
+    uOffset: { value: 24 },
+    uExponent: { value: 0.45 }
+  };
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.15);
-dirLight.position.set(50, 80, -30);
-dirLight.castShadow = true;
-dirLight.shadow.mapSize.set(2048, 2048);
-scene.add(dirLight);
+  const skyMaterial = new THREE.ShaderMaterial({
+    uniforms: skyUniforms,
+    vertexShader: `
+      varying vec3 vWorldPosition;
+      void main() {
+        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+        vWorldPosition = worldPosition.xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uTopColor;
+      uniform vec3 uBottomColor;
+      uniform float uOffset;
+      uniform float uExponent;
+      varying vec3 vWorldPosition;
+      void main() {
+        float h = normalize(vWorldPosition + vec3(0.0, uOffset, 0.0)).y;
+        float mixFactor = pow(max(h, 0.0), uExponent);
+        vec3 color = mix(uBottomColor, uTopColor, mixFactor);
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `,
+    side: THREE.BackSide,
+    depthWrite: false
+  });
+
+  const skyDome = new THREE.Mesh(new THREE.SphereGeometry(350, 32, 15), skyMaterial);
+  targetScene.add(skyDome);
+
+  const ambientLight = new THREE.AmbientLight(0xb1c6da, 0.35);
+  const hemiLight = new THREE.HemisphereLight(0x93b6ff, 0x0c1017, 0.35);
+  const sunLight = new THREE.DirectionalLight(0xfff4d1, 1.15);
+  sunLight.position.set(60, 90, -40);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.set(2048, 2048);
+  sunLight.shadow.camera.near = 10;
+  sunLight.shadow.camera.far = 260;
+  sunLight.shadow.camera.left = -80;
+  sunLight.shadow.camera.right = 80;
+  sunLight.shadow.camera.top = 80;
+  sunLight.shadow.camera.bottom = -80;
+
+  targetScene.add(ambientLight, hemiLight, sunLight);
+
+  const skyColors = {
+    dawnTop: new THREE.Color("#1c2c50"),
+    dayTop: new THREE.Color("#4b7cc9"),
+    duskTop: new THREE.Color("#2a2f5c"),
+    nightTop: new THREE.Color("#0b1e3d"),
+    dawnBottom: new THREE.Color("#101722"),
+    dayBottom: new THREE.Color("#cad9ff"),
+    duskBottom: new THREE.Color("#0c0f1d"),
+    nightBottom: new THREE.Color("#0b0d14")
+  };
+
+  function update(time) {
+    const cycle = (Math.sin(time * 0.08) + 1) / 2;
+    const sunAngle = THREE.MathUtils.lerp(-Math.PI * 0.15, Math.PI * 0.65, cycle);
+    sunLight.position.set(
+      Math.cos(sunAngle) * 80,
+      Math.sin(sunAngle) * 90 + 20,
+      -30
+    );
+
+    const colorBlend = cycle < 0.5 ? cycle * 2 : (1 - cycle) * 2;
+    const topColor = cycle > 0.35
+      ? skyColors.dayTop.clone().lerp(skyColors.duskTop, 1 - colorBlend)
+      : skyColors.nightTop.clone().lerp(skyColors.dawnTop, colorBlend);
+    const bottomColor = cycle > 0.35
+      ? skyColors.dayBottom.clone().lerp(skyColors.duskBottom, 1 - colorBlend)
+      : skyColors.nightBottom.clone().lerp(skyColors.dawnBottom, colorBlend);
+
+    skyUniforms.uTopColor.value.copy(topColor);
+    skyUniforms.uBottomColor.value.copy(bottomColor);
+
+    const sunIntensity = THREE.MathUtils.lerp(0.6, 1.25, cycle);
+    sunLight.intensity = sunIntensity;
+    ambientLight.intensity = THREE.MathUtils.lerp(0.25, 0.45, cycle);
+    hemiLight.intensity = THREE.MathUtils.lerp(0.2, 0.5, cycle);
+  }
+
+  return { update };
+}
+
+const lightingSystem = createLightingSystem(scene);
 
 const voxelConfig = {
   size: 36,
@@ -579,6 +665,9 @@ function updateCamera() {
 function animate() {
   const delta = clock.getDelta();
   clock.getElapsedTime();
+  const elapsed = clock.getElapsedTime();
+  terrainUniforms.uTime.value = elapsed;
+  lightingSystem.update(elapsed);
 
   const acceleration = inputState.boost ? 18 : 10;
   const maxSpeed = inputState.boost ? 16 : 9;

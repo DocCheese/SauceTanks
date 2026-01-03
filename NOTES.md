@@ -6,6 +6,7 @@
 - Projectile impact checks step along the shell path and carve a spherical hole from the voxel set, triggering a rebuild of the terrain mesh + props.
 - SVG textures are converted into canvas-based textures to keep the pipeline GPU-friendly without external assets.
 - Pointer lock is required for turret/cannon aiming; click the canvas to lock.
+- The skybox is a shader-driven dome tied into the lighting system, which animates a gentle sun path.
 
 ## Next Steps
 - Add chunked voxel meshing to avoid full rebuilds on every impact.
